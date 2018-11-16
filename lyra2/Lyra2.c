@@ -352,6 +352,8 @@ int LYRA2_3(void *K, int64_t kLen, const void *pwd, int32_t pwdlen, const void *
 			//------------------------------------------------------------------------------------------
 			instance = state[instance % 16];
 			rowa = state[instance % 16] & (unsigned int)(nRows-1);
+
+			//rowa = state[0] & (unsigned int)(nRows-1);
 			//rowa = state[0] & (unsigned int)(nRows-1);  //(USE THIS IF nRows IS A POWER OF 2)
 			//rowa = state[0] % nRows; //(USE THIS FOR THE "GENERIC" CASE)
 			//------------------------------------------------------------------------------------------

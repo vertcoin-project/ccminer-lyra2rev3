@@ -230,7 +230,8 @@ void lyra2v2_gpu_hash_32_v3(uint32_t threads, uint32_t startNounce, uint2 *outpu
 		int prev = 3;
 		for (int i = 0; i < 4; i++)
 		{
-			rowa = ((uint2*)state)[0].x & 3;  reduceDuplexRowtV3(prev, rowa, i, state, thread);
+			rowa = ((uint2*)state)[0].x & 3;  
+			reduceDuplexRowtV3(prev, rowa, i, state, thread);
 			prev = i;
 		}
 
@@ -311,7 +312,8 @@ void lyra2v2_gpu_hash_32_v3(uint32_t threads, uint32_t startNounce, uint2 *outpu
 		int prev = 3;
 		for (int i = 0; i < 4; i++)
 		{
-			rowa = ((uint2*)state)[0].x & 3;  reduceDuplexRowtV3(prev, rowa, i, state, thread);
+			rowa = ((uint2*)state)[0].x & 3;  
+			reduceDuplexRowtV3(prev, rowa, i, state, thread);
 			prev = i;
 		}
 

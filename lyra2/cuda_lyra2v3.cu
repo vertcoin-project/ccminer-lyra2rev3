@@ -10,10 +10,7 @@
 
 #include "cuda_lyra2v3_sm3.cuh"
 
-static uint32_t *d_gnounce[MAX_GPUS];
-static uint32_t *d_GNonce[MAX_GPUS];
 
-__constant__ uint64_t pTarget[4];
 
 #ifdef __INTELLISENSE__
 /* just for vstudio code colors */
@@ -384,14 +381,17 @@ void lyra2v3_gpu_hash_32_2(uint32_t threads)
 		uint instance = 0;
 		for (int i = 0; i < 3; i++)
 		{
-			uint share = state[instance & 3].x;
-			instance  = __shfl(share, (instance >> 2) & 3, 4);
-			rowa = __shfl(state[instance & 3].x, (instance >> 2) & 3, 4);
+			instance = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4);
+			rowa = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4) & 0x3;
+//			rowa = __shfl(state[0].x, 0, 4) & 3;
 			reduceDuplexRowt2(prev, rowa, i, state);
 			prev = i;
 		}
+		
+		instance = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4);
+		rowa = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4) & 0x3;
 
-		rowa = __shfl(state[0].x, 0, 4) & 3;
+		//rowa = __shfl(state[0].x, 0, 4) & 3;
 		reduceDuplexRowt2x4(rowa, state);
 
 		((uint2*)DMatrix)[(0 * gridDim.x * blockDim.y + thread) * blockDim.x + threadIdx.x] = state[0];
@@ -425,37 +425,6 @@ void lyra2v3_gpu_hash_32_3(uint32_t threads, uint2 *outputHash)
 		outputHash[thread + threads * 3] = state[0].w;
 	}
 }
-__global__
-__launch_bounds__(TPB, 1)
-void lyra2v3_gpu_hash_32_3_targ(uint32_t threads, uint32_t startNounce, uint64_t *g_hash, uint32_t *const __restrict__ nonceVector) {
-	const uint32_t thread = blockDim.x * blockIdx.x + threadIdx.x;
-
-	uint2x4 state[4];
-
-	if (thread < threads)
-	{
-		state[0] = __ldg4(&DMatrix[blockDim.x * gridDim.x * 0 + thread]);
-		state[1] = __ldg4(&DMatrix[blockDim.x * gridDim.x * 1 + thread]);
-		state[2] = __ldg4(&DMatrix[blockDim.x * gridDim.x * 2 + thread]);
-		state[3] = __ldg4(&DMatrix[blockDim.x * gridDim.x * 3 + thread]);
-
-		for (int i = 0; i < 12; i++)
-			round_lyra_v5(state);
-
-		uint64_t compare = state[0].w.x | (((uint64_t)state[0].w.y) << 32);
-		if (compare <= pTarget[3])
-		{
-			uint32_t tmp = atomicExch(&nonceVector[0], startNounce + thread);
-			if (tmp != 0)
-				nonceVector[1] = tmp;
-		}
-
-		//outputHash[thread + threads * 0] = state[0].x;
-		//outputHash[thread + threads * 1] = state[0].y;
-		//outputHash[thread + threads * 2] = state[0].z;
-		//outputHash[thread + threads * 3] = state[0].w;
-	}
-}
 
 #else
 #include "cuda_helper.h"
@@ -465,7 +434,6 @@ __device__ void* DMatrix;
 __global__ void lyra2v3_gpu_hash_32_1(uint32_t threads, uint2 *inputHash) {}
 __global__ void lyra2v3_gpu_hash_32_2(uint32_t threads) {}
 __global__ void lyra2v3_gpu_hash_32_3(uint32_t threads, uint2 *outputHash) {}
-__global__ void lyra2v3_gpu_hash_32_3_targ(uint32_t threads, uint32_t startNounce, uint64_t *g_hash, uint32_t *const __restrict__ nonceVector) {}
 #endif
 
 
@@ -475,15 +443,11 @@ void lyra2v3_cpu_init(int thr_id, uint32_t threads, uint64_t *d_matrix)
 	cuda_get_arch(thr_id);
 	// just assign the device pointer allocated in main loop
 	cudaMemcpyToSymbol(DMatrix, &d_matrix, sizeof(uint64_t*), 0, cudaMemcpyHostToDevice);
-	cudaMalloc(&d_GNonce[thr_id], 2 * sizeof(uint32_t));
-	cudaMallocHost(&d_gnounce[thr_id], 2 * sizeof(uint32_t));
 }
 
 __host__
 void lyra2v3_cpu_free(int thr_id) 
 {
-	cudaFree(d_GNonce[thr_id]);
-	cudaFreeHost(d_gnounce[thr_id]);
 }
 
 __host__
@@ -518,44 +482,4 @@ void lyra2v3_cpu_hash_32(int thr_id, uint32_t threads, uint32_t startNounce, uin
 	}
 }
 
-__host__
-void lyra2v3_cpu_hash_32_targ(int thr_id, uint32_t threads, uint32_t startNounce, uint64_t *g_hash, uint32_t * resultnonces)
-{
-	int dev_id = device_map[thr_id % MAX_GPUS];
-	cudaMemset(d_GNonce[thr_id], 0, 2 * sizeof(uint32_t));
 
-	if (device_sm[dev_id] >= 500) {
-
-		const uint32_t tpb = TPB;
-
-		dim3 grid2((threads + tpb - 1) / tpb);
-		dim3 block2(tpb);
-		dim3 grid4((threads * 4 + tpb - 1) / tpb);
-		dim3 block4(4, tpb / 4);
-
-		lyra2v3_gpu_hash_32_1 <<< grid2, block2 >>> (threads, (uint2*)g_hash);
-		lyra2v3_gpu_hash_32_2 <<< grid4, block4, 48 * sizeof(uint2) * tpb >>> (threads);
-		lyra2v3_gpu_hash_32_3_targ <<< grid2, block2 >>> (threads, startNounce, g_hash, d_GNonce[thr_id]);
-
-	} else {
-
-		uint32_t tpb = 16;
-		if (cuda_arch[dev_id] >= 350) tpb = TPB35;
-		else if (cuda_arch[dev_id] >= 300) tpb = TPB30;
-		else if (cuda_arch[dev_id] >= 200) tpb = TPB20;
-
-		dim3 grid((threads + tpb - 1) / tpb);
-		dim3 block(tpb);
-		lyra2v3_gpu_hash_32_v3_targ <<< grid, block >>> (threads, startNounce, (uint2*)g_hash, d_GNonce[thr_id]);
-	}
-	cudaMemcpy(d_gnounce[thr_id], d_GNonce[thr_id], 2 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
-	resultnonces[0] = *(d_gnounce[thr_id]);
-	resultnonces[1] = *(d_gnounce[thr_id] + 1);
-}
-
-
-__host__
-void lyra2v3_setTarget(const void *pTargetIn)
-{
-	cudaMemcpyToSymbol(pTarget, pTargetIn, 32, 0, cudaMemcpyHostToDevice);
-}

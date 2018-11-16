@@ -104,7 +104,7 @@ if HAVE_WINDOWS
 ccminer_SOURCES += compat/winansi.c
 endif
 
-ccminer_LDFLAGS  = $(PTHREAD_FLAGS) @CUDA_LDFLAGS@
+ccminer_LDFLAGS  = $(PTHREAD_FLAGS) @CUDA_LDFLAGS@ -L/usr/local/cuda/lib64/stubs
 ccminer_LDADD    = @LIBCURL@ @JANSSON_LIBS@ @PTHREAD_LIBS@ @WS2_LIBS@ @CUDA_LIBS@ @OPENMP_CFLAGS@ @LIBS@ $(nvml_libs)
 ccminer_CPPFLAGS = @LIBCURL_CPPFLAGS@ @OPENMP_CFLAGS@ $(CPPFLAGS) $(PTHREAD_FLAGS) -fno-strict-aliasing $(JANSSON_INCLUDES) $(DEF_INCLUDES) $(nvml_defs)
 
