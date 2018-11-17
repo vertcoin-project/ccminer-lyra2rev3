@@ -225,7 +225,7 @@ int LYRA2_3(void *K, int64_t kLen, const void *pwd, int32_t pwdlen, const void *
 	int64_t gap = 1; //Modifier to the step, assuming the values 1 or -1
 	int64_t i; //auxiliary iteration counter
 	int64_t v64; // 64bit var for memcpy
-	int64_t instance = 0;
+	uint64_t instance = 0;
 	//==========================================================================/
 
 	//========== Initializing the Memory Matrix and pointers to it =============//
@@ -353,7 +353,6 @@ int LYRA2_3(void *K, int64_t kLen, const void *pwd, int32_t pwdlen, const void *
 			instance = state[instance % 16];
 			rowa = state[instance % 16] & (unsigned int)(nRows-1);
 
-			//rowa = state[0] & (unsigned int)(nRows-1);
 			//rowa = state[0] & (unsigned int)(nRows-1);  //(USE THIS IF nRows IS A POWER OF 2)
 			//rowa = state[0] % nRows; //(USE THIS FOR THE "GENERIC" CASE)
 			//------------------------------------------------------------------------------------------

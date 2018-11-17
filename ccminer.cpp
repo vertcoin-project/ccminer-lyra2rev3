@@ -2698,40 +2698,44 @@ static void *miner_thread(void *userdata)
 		if (cgpu) cgpu->accepted += work.valid_nonces;
 
 		/* if nonce found, submit work */
-		if (rc > 0 && !opt_benchmark) {
-			uint32_t curnonce = nonceptr[0]; // current scan position
+		if (rc > 0) {
+			//printf("nonce found!\n");
+			if (!opt_benchmark)
+			{
+				uint32_t curnonce = nonceptr[0]; // current scan position
 
-			if (opt_led_mode == LED_MODE_SHARES)
-				gpu_led_percent(dev_id, 50);
+				if (opt_led_mode == LED_MODE_SHARES)
+					gpu_led_percent(dev_id, 50);
 
-			work.submit_nonce_id = 0;
-			nonceptr[0] = work.nonces[0];
-			if (!submit_work(mythr, &work))
-				break;
-			nonceptr[0] = curnonce;
-
-			// prevent stale work in solo
-			// we can't submit twice a block!
-			if (!have_stratum && !have_longpoll) {
-				pthread_mutex_lock(&g_work_lock);
-				// will force getwork
-				g_work_time = 0;
-				pthread_mutex_unlock(&g_work_lock);
-				continue;
-			}
-
-			// second nonce found, submit too (on pool only!)
-			if (rc > 1 && work.nonces[1]) {
-				work.submit_nonce_id = 1;
-				nonceptr[0] = work.nonces[1];
-				if (opt_algo == ALGO_ZR5) {
-					work.data[0] = work.data[22]; // pok
-					work.data[22] = 0;
-				}
+				work.submit_nonce_id = 0;
+				nonceptr[0] = work.nonces[0];
 				if (!submit_work(mythr, &work))
 					break;
 				nonceptr[0] = curnonce;
-				work.nonces[1] = 0; // reset
+
+				// prevent stale work in solo
+				// we can't submit twice a block!
+				if (!have_stratum && !have_longpoll) {
+					pthread_mutex_lock(&g_work_lock);
+					// will force getwork
+					g_work_time = 0;
+					pthread_mutex_unlock(&g_work_lock);
+					continue;
+				}
+
+				// second nonce found, submit too (on pool only!)
+				if (rc > 1 && work.nonces[1]) {
+					work.submit_nonce_id = 1;
+					nonceptr[0] = work.nonces[1];
+					if (opt_algo == ALGO_ZR5) {
+						work.data[0] = work.data[22]; // pok
+						work.data[22] = 0;
+					}
+					if (!submit_work(mythr, &work))
+						break;
+					nonceptr[0] = curnonce;
+					work.nonces[1] = 0; // reset
+				}
 			}
 		}
 	}

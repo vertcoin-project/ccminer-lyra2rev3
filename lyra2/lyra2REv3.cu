@@ -126,7 +126,6 @@ extern "C" int scanhash_lyra2v3(int thr_id, struct work* work, uint32_t max_nonc
 
 		if (work->nonces[0] != 0)
 		{
-			printf("found some nonces\n");
 			const uint32_t Htarg = ptarget[7];
 			uint32_t _ALIGN(64) vhash[8];
 			be32enc(&endiandata[19], work->nonces[0]);

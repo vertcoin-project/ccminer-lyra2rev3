@@ -381,15 +381,16 @@ void lyra2v3_gpu_hash_32_2(uint32_t threads)
 		uint instance = 0;
 		for (int i = 0; i < 3; i++)
 		{
-			instance = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4);
-			rowa = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4) & 0x3;
-//			rowa = __shfl(state[0].x, 0, 4) & 3;
+			instance = __shfl(state[(instance >> 2) & 0x3].x, instance & 0x3, 4);
+			rowa     = __shfl(state[(instance >> 2) & 0x3].x, instance & 0x3, 4) & 0x3;
+			
+			//rowa = __shfl(state[0].x, 0, 4) & 3;
 			reduceDuplexRowt2(prev, rowa, i, state);
 			prev = i;
 		}
 		
-		instance = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4);
-		rowa = __shfl(state[(instance & 0xf) >> 2].x, instance & 0x3, 4) & 0x3;
+		instance = __shfl(state[(instance >> 2) & 0x3].x, instance & 0x3, 4);
+		rowa     = __shfl(state[(instance >> 2) & 0x3].x, instance & 0x3, 4) & 0x3;
 
 		//rowa = __shfl(state[0].x, 0, 4) & 3;
 		reduceDuplexRowt2x4(rowa, state);
