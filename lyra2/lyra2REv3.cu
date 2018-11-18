@@ -122,7 +122,7 @@ extern "C" int scanhash_lyra2v3(int thr_id, struct work* work, uint32_t max_nonc
 		memset(work->nonces, 0, sizeof(work->nonces));
   		bmw256_cpu_hash_32(thr_id, throughput, pdata[19], d_hash[thr_id], work->nonces);
 
-		*hashes_done = pdata[20] - first_nonce + throughput;
+		*hashes_done = pdata[19] - first_nonce + throughput;
 
 		if (work->nonces[0] != 0)
 		{
