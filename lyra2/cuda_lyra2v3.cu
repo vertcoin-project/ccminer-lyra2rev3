@@ -378,7 +378,7 @@ void lyra2v3_gpu_hash_32_2(uint32_t threads)
 
 		uint32_t rowa;
 		int prev = 3;
-		uint instance = 0;
+		unsigned int instance = 0;
 		for (int i = 0; i < 3; i++)
 		{
 			instance = __shfl(state[(instance >> 2) & 0x3].x, instance & 0x3, 4);
